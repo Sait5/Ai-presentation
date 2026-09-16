@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DocumentKind {
+  text
+  presentation
+  spreadsheet
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  email        String     @unique @db.VarChar(254)
+  passwordHash String
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime   @updatedAt @db.Timestamptz(3)
+  documents    Document[]
+  sessions     Session[]
+  images       ImageAsset[]
+}
+
+model ImageAsset {
+  id        String   @id @default(uuid()) @db.Uuid
+  ownerId   String   @db.Uuid
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  bytes     Bytes
+  width     Int
+  height    Int
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([ownerId])
+}
+
+model Session {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @db.Uuid
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId    String    @db.Uuid
+  tokenHash   String    @unique @db.VarChar(64)
+  expiresAt   DateTime  @db.Timestamptz(3)
+  revokedAt   DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([familyId])
+  @@index([userId, expiresAt])
+}
+
+model Document {
+  id        String            @id @default(uuid()) @db.Uuid
+  ownerId   String            @db.Uuid
+  owner     User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title     String            @db.VarChar(300)
+  kind      DocumentKind
+  purpose   String            @db.VarChar(64)
+  content   Json              @db.JsonB
+  revision  Int               @default(1)
+  createdAt DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime          @updatedAt @db.Timestamptz(3)
+  versions  DocumentVersion[]
+
+  @@index([ownerId, updatedAt(sort: Desc), id])
+}
+
+model DocumentVersion {
+  id         String       @id @default(uuid()) @db.Uuid
+  documentId String       @db.Uuid
+  document   Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  revision   Int
+  title      String       @db.VarChar(300)
+  kind       DocumentKind
+  purpose    String       @db.VarChar(64)
+  content    Json         @db.JsonB
+  reason     String       @db.VarChar(64)
+  createdAt  DateTime     @default(now()) @db.Timestamptz(3)
+
+  @@unique([documentId, revision])
+}
