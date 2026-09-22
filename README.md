@@ -222,4 +222,3 @@ npm --prefix server run test:db
 
 `npm audit` сообщает об уязвимостях зависимостей, в том числе транзитивных `image-size` у PptxGenJS и `uuid` у ExcelJS. В PptxGenJS передаётся только PNG, декодированный и заново созданный sharp; внешние URL и SVG не принимаются. Экспорт не использует UUID v3/v5/v6 этих библиотек. Это не заменяет обновление и отдельную проверку зависимостей перед публичным запуском; массовый `audit fix --force` не применялся.
 
-Официальные источники для следующего этапа: [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs), [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra). Для PDF используется [Playwright page.pdf](https://playwright.dev/docs/api/class-page#page-pdf).
