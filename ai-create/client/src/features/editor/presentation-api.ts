@@ -15,8 +15,26 @@ export function useAIStatus() {
 }
 
 const assetSchema = z.object({ id: z.string().uuid(), width: z.number(), height: z.number() })
-export async function generatePresentation(data: PresentationRequest) {
-  return presentationContentSchema.parse((await request({ url: '/ai/presentation', method: 'POST', data, timeout: 200000 })).data)
+export async function generatePresentation(data: PresentationRequest, onText?: (text: string) => void) {
+  let consumed = 0
+  const consume = (text: string) => {
+    let end: number
+    while ((end = text.indexOf('\n', consumed)) >= 0) {
+      const line = text.slice(consumed, end); consumed = end + 1
+      try { const event = JSON.parse(line); if (event.type === 'text' && typeof event.text === 'string') onText?.(event.text) } catch { /* Wait for a complete event. */ }
+    }
+  }
+  const response = await request<string>({ url: '/ai/presentation/stream', method: 'POST', data, timeout: 200000, responseType: 'text',
+    onDownloadProgress: event => { const text = event.event?.target?.responseText; if (typeof text === 'string') consume(text) },
+  })
+  consume(response.data)
+  const events = response.data.trim().split('\n').map(line => JSON.parse(line))
+  const error = events.find(event => event.type === 'error')
+  if (error) throw new Error(error.message)
+  return presentationContentSchema.parse(events.find(event => event.type === 'complete')?.content)
+}
+export async function findSlideImage(query: string) {
+  return assetSchema.extend({ source: z.string().url() }).parse((await request({ url: '/ai/image/search', method: 'POST', data: { query }, timeout: 60000 })).data)
 }
 export async function generateImage(data: ImageRequest) {
   return assetSchema.parse((await request({ url: '/ai/image', method: 'POST', data, timeout: 200000 })).data)

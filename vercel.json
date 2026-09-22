@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "npm ci --prefix server && npm ci --prefix ai-create/client",
+  "buildCommand": "npm run build",
+  "outputDirectory": "ai-create/client/dist",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 300,
+      "includeFiles": "server/node_modules/{@sparticuz/chromium/bin,@fontsource/noto-sans/files}/**",
+      "excludeFiles": "{.local/**,server/.env,server/tests/**,docs/**,**/*.map}"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api" },
+    { "source": "/health/:path*", "destination": "/api" },
+    { "source": "/((?!api/|health/).*)", "destination": "/index.html" }
+  ]
+}

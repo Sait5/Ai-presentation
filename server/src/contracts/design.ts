@@ -22,6 +22,7 @@ export const slideImageSchema = z.object({
   assetId: z.string().uuid(), alt: z.string().max(500), placement: z.enum(placements),
   x: z.number().min(0).max(90), y: z.number().min(0).max(90), w: z.number().min(10).max(100), h: z.number().min(10).max(100),
   fit: z.enum(['cover', 'contain']), opacity: z.number().min(0.1).max(1),
+  source: z.string().url().regex(/^https:\/\/commons\.wikimedia\.org\//).optional(),
 }).strict().refine(v => v.x + v.w <= 100 && v.y + v.h <= 100, 'Изображение должно находиться внутри слайда')
 export type SlideImage = z.infer<typeof slideImageSchema>
 export const newSlideImage = (assetId: string, alt = ''): SlideImage => ({ assetId, alt, placement: 'right', x: 55, y: 27, w: 40, h: 60, fit: 'cover', opacity: 1 })

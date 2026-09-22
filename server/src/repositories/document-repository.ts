@@ -10,10 +10,20 @@ export function documentRepository(db: PrismaClient) {
       db.document.count({ where: { ownerId } }),
     ]),
     get: (ownerId: string, id: string) => db.document.findFirst({ where: { id, ownerId } }),
-    create: (ownerId: string, data: DocumentInput) => db.document.create({ data: {
+    quota: async (ownerId: string) => {
+      const user = await db.user.findUniqueOrThrow({ where: { id: ownerId }, select: { isAdmin: true, documentsCreated: true } })
+      return { used: user.documentsCreated, limit: user.isAdmin ? null : 8, isAdmin: user.isAdmin }
+    },
+    create: (ownerId: string, data: DocumentInput) => db.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${ownerId}::uuid FOR UPDATE`
+      const user = await tx.user.findUniqueOrThrow({ where: { id: ownerId } })
+      if (!user.isAdmin && user.documentsCreated >= 8) throw new HttpError(422, 'DOCUMENT_QUOTA', 'Использованы все 8 созданий документов. Word, Excel, презентации и копии считаются вместе. Удаление не восстанавливает лимит.')
+      await tx.user.update({ where: { id: ownerId }, data: { documentsCreated: { increment: 1 } } })
+      return tx.document.create({ data: {
       ...data, kind: data.content.kind, ownerId,
       versions: { create: { ...data, kind: data.content.kind, revision: 1, reason: 'created' } },
-    } }),
+      } })
+    }),
     async update(ownerId: string, id: string, data: DocumentInput, expectedRevision: number) {
       return db.$transaction(async (tx) => {
         const current = await tx.document.findFirst({ where: { id, ownerId } })

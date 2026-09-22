@@ -10,7 +10,7 @@ const input: PresentationRequest = { topic: 'План команды на нед
 const slides = Array.from({ length: 3 }, (_, i) => ({ title: `Этап ${i + 1}`, bullets: ['Согласовать план'], imagePrompt: 'Команда в офисе' }))
 test('Gemini uses only its selected endpoint and key; validates output and preserves design', async () => {
   const service = aiService(config, async (url, options) => {
-    assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent')
+    assert.equal(url, 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent')
     assert.equal(new Headers(options?.headers).get('x-goog-api-key'), 'test-gemini-secret')
     assert.equal(new Headers(options?.headers).get('Authorization'), null)
     const body = JSON.parse(String(options?.body))

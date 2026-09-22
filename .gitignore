@@ -9,3 +9,4 @@ coverage/
 *.tsbuildinfo
 .local/
 server/src/generated/
+.vercel/

@@ -12,7 +12,8 @@ import { documentController } from '../controllers/document-controller.js'
 import { HttpError } from '../middleware/errors.js'
 import { imageService } from '../services/image-service.js'
 import { aiService } from '../services/ai-service.js'
-import { imageRequestSchema, presentationRequestSchema } from '../contracts/ai.js'
+import { commonsService } from '../services/commons-service.js'
+import { imageRequestSchema, presentationRequestSchema, officeRequestSchema } from '../contracts/ai.js'
 
 export function createApi(db: PrismaClient, config: AppConfig) {
   const router = Router()
@@ -37,15 +38,52 @@ export function createApi(db: PrismaClient, config: AppConfig) {
   router.get('/auth/me', async (_req, res) => { res.json({ user: await auth.me(res.locals.userId as string) }) })
   const images = imageService(db)
   const ai = aiService(config)
+  router.get('/account/quota', async (_req, res) => { res.json(await documentRepository(db).quota(res.locals.userId as string)) })
   router.get('/ai/status', (_req, res) => { res.json(ai.status) })
   router.use('/ai', limiter(30))
   const active = new Set<string>()
+  router.post('/ai/office', async (req, res) => {
+    const input = officeRequestSchema.parse(req.body)
+    const userId = res.locals.userId as string
+    if (active.has(userId)) throw new HttpError(409, 'AI_BUSY', 'Дождитесь завершения текущей генерации')
+    active.add(userId)
+    try { res.json(await ai.office(input)) } finally { active.delete(userId) }
+  })
+  const findImage = commonsService()
+  router.post('/ai/image/search', async (req, res) => {
+    const { query } = z.object({ query: z.string().trim().min(2).max(150) }).strict().parse(req.body)
+    const userId = res.locals.userId as string
+    if (active.has(userId)) throw new HttpError(409, 'AI_BUSY', 'Дождитесь завершения текущей генерации')
+    active.add(userId)
+    try {
+      const found = await findImage(query)
+      res.status(201).json({ ...await images.store(userId, found.bytes), source: found.source })
+    } finally { active.delete(userId) }
+  })
   router.post('/ai/presentation', async (req, res) => {
     const input = presentationRequestSchema.parse(req.body)
     const userId = res.locals.userId as string
     if (active.has(userId)) throw new HttpError(409, 'AI_BUSY', 'Дождитесь завершения текущей генерации')
     active.add(userId)
     try { res.json(await ai.presentation(input)) } finally { active.delete(userId) }
+  })
+  router.post('/ai/presentation/stream', async (req, res) => {
+    const input = presentationRequestSchema.parse(req.body)
+    const userId = res.locals.userId as string
+    if (active.has(userId)) throw new HttpError(409, 'AI_BUSY', 'Дождитесь завершения текущей генерации')
+    active.add(userId)
+    const controller = new AbortController()
+    res.on('close', () => controller.abort())
+    res.set({ 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' })
+    res.flushHeaders()
+    const send = (event: unknown) => { if (!res.destroyed) res.write(JSON.stringify(event) + '\n') }
+    try {
+      send({ type: 'start' })
+      const content = await ai.presentation(input, text => send({ type: 'text', text }), controller.signal)
+      send({ type: 'complete', content })
+    } catch (error) {
+      send({ type: 'error', message: error instanceof HttpError ? error.message : 'Не удалось создать презентацию. Попробуйте снова.' })
+    } finally { active.delete(userId); res.end() }
   })
   router.post('/ai/image', async (req, res) => {
     const input = imageRequestSchema.parse(req.body)

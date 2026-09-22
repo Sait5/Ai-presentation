@@ -2,17 +2,19 @@ import { readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { chromium } from 'playwright'
 import type { SavedDocument, TextBlock } from '../contracts/document.js'
+import { defaultTextDesign } from '../contracts/document.js'
 import { HttpError } from '../middleware/errors.js'
 
 const require = createRequire(import.meta.url)
 const escape = (text: string) => text.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!)
-function renderBlock(block: TextBlock): string {
+function renderBlock(block: TextBlock, assets: Map<string, string>): string {
   switch (block.type) {
     case 'heading': return `<h${block.level + 1}>${escape(block.text)}</h${block.level + 1}>`
     case 'paragraph': return `<p>${escape(block.text)}</p>`
     case 'list': { const tag = block.ordered ? 'ol' : 'ul'; return `<${tag}>${block.items.map((item) => `<li>${escape(item)}</li>`).join('')}</${tag}>` }
     case 'table': return `<table><thead><tr>${block.columns.map((column) => `<th>${escape(column)}</th>`).join('')}</tr></thead><tbody>${block.rows.map((row) => `<tr>${row.map((cell) => `<td>${escape(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table>`
     case 'pageBreak': return '<div class="page-break"></div>'
+    case 'image': return `<figure style="text-align:${block.align};margin:12pt 0"><img src="${assets.get(block.assetId)}" alt="${escape(block.alt)}" style="width:${block.width}%;max-height:230mm;object-fit:contain" /></figure>`
   }
 }
 async function fontCss() {
@@ -26,14 +28,23 @@ async function fontCss() {
   return rules.join('')
 }
 let busy = false
-export async function generatePdf(document: SavedDocument): Promise<Buffer> {
+export async function generatePdf(document: SavedDocument, getImage?: (id: string) => Promise<Buffer>): Promise<Buffer> {
   if (document.content.kind !== 'text') throw new HttpError(422, 'UNSUPPORTED_FORMAT', 'PDF доступен для текстовых документов')
+  const design = document.content.design ?? defaultTextDesign
   if (busy) throw new HttpError(503, 'EXPORT_BUSY', 'Экспорт занят. Повторите через несколько секунд.')
   busy = true
   let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined
   let deadline: ReturnType<typeof setTimeout> | undefined
   try {
-    browser = await chromium.launch({ headless: true, timeout: 15000 })
+    const assets = new Map<string, string>()
+    for (const block of document.content.blocks) if (block.type === 'image') {
+      if (!getImage) throw new HttpError(422, 'IMAGE_NOT_FOUND', 'Изображение недоступно для экспорта')
+      assets.set(block.assetId, `data:image/png;base64,${(await getImage(block.assetId)).toString('base64')}`)
+    }
+    if (process.env.VERCEL) {
+      const { default: bundledChromium } = await import('@sparticuz/chromium')
+      browser = await chromium.launch({ executablePath: await bundledChromium.executablePath(), args: bundledChromium.args, headless: true, timeout: 15000 })
+    } else browser = await chromium.launch({ headless: true, timeout: 15000 })
     deadline = setTimeout(() => { void browser?.close() }, 25000)
     const page = await browser.newPage({ javaScriptEnabled: false })
     await page.route('**/*', (route) => route.abort())
@@ -50,7 +61,8 @@ export async function generatePdf(document: SavedDocument): Promise<Buffer> {
       th,td{border:1px solid #cdd8d1;text-align:left;padding:7pt;vertical-align:top;white-space:pre-wrap;overflow-wrap:anywhere}
       th{background:#edf3ef;font-weight:600}thead{display:table-header-group}tr{break-inside:avoid}
       .page-break{break-before:page}.page-break:first-child{break-before:auto}
-    </style></head><body><h1>${escape(document.title)}</h1>${document.content.blocks.map(renderBlock).join('')}</body></html>`, { waitUntil: 'load' })
+      body{font-family:'${design.font}',Document,${design.font === 'Georgia' ? 'serif' : 'sans-serif'};font-size:${design.size}pt;line-height:${design.lineHeight};color:${design.color};text-align:${design.align}}
+    </style></head><body><h1>${escape(document.title)}</h1>${document.content.blocks.map(block => renderBlock(block, assets)).join('')}</body></html>`, { waitUntil: 'load' })
     await page.evaluate('document.fonts.ready')
     return await page.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true,
       displayHeaderFooter: true, headerTemplate: '<div></div>',

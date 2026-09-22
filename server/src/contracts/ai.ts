@@ -4,6 +4,11 @@ import { designSchema, themeNames } from './design.js'
 export const aiStatusSchema = z.object({ enabled: z.boolean(), provider: z.enum(['gemini', 'openai']), imageGeneration: z.boolean() }).strict()
 export type AIStatus = z.infer<typeof aiStatusSchema>
 
+export const officeRequestSchema = z.object({ kind: z.enum(['text', 'spreadsheet']), topic: z.string().trim().min(10).max(5000), language: z.enum(['ru', 'en']) }).strict()
+export type OfficeRequest = z.infer<typeof officeRequestSchema>
+export const textOutlineSchema = z.object({ sections: z.array(z.object({ heading: z.string().max(300), paragraphs: z.array(z.string().max(3000)).min(1).max(5) }).strict()).min(1).max(12) }).strict()
+export const sheetOutlineSchema = z.object({ sheets: z.array(z.object({ name: z.string().min(1).max(31), columns: z.array(z.string().max(120)).min(1).max(8), rows: z.array(z.object({ cells: z.array(z.string().max(300)).min(1).max(8) }).strict()).min(1).max(30) }).strict()).min(1).max(3) }).strict()
+
 export const presentationRequestSchema = z.object({
   topic: z.string().trim().min(10).max(5000), count: z.number().int().min(3).max(15),
   language: z.enum(['ru', 'en']), tone: z.enum(['Деловой', 'Простой и понятный', 'Академический', 'Вдохновляющий', 'Рекламный']),

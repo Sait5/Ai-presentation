@@ -38,6 +38,8 @@ test('auth, ownership, revision conflicts, persistence and real PDF form one wor
     assert.match(aResponse.headers.get('set-cookie')!, /HttpOnly/i)
     assert.match(aResponse.headers.get('set-cookie')!, /SameSite=Strict/i)
     const a = sessionSchema.parse(await aResponse.json()); users.push(a.user.id)
+    // This export/ownership scenario creates more than eight fixtures; lifetime quota has its own concurrency test.
+    await db.client.user.update({ where: { id: a.user.id }, data: { isAdmin: true } })
     const cookieA = cookieOf(aResponse)
     const bResponse = await api('/auth/register', 'POST', { ...account, email: `stage2-${randomUUID()}@example.test` })
     const b = sessionSchema.parse(await bResponse.json()); users.push(b.user.id)

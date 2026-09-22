@@ -11,6 +11,8 @@ import { TextCanvas } from './TextCanvas'
 import { PresentationEditor } from './PresentationEditor'
 import { SpreadsheetEditor } from './SpreadsheetEditor'
 import { UnsavedDialog } from '../../components/UnsavedDialog'
+import { OfficeAI } from './OfficeAI'
+import { TextDesign } from './TextDesign'
 
 const kindLabels = { text: 'Документ · Word / PDF', presentation: 'Презентация · PowerPoint', spreadsheet: 'Таблица · Excel' }
 export function Editor() {
@@ -56,7 +58,9 @@ export function Editor() {
     {(error || exportError) && <div className="notice error" role="alert">{error || exportError}</div>}
     <div className="office-canvas-area"><div className="canvas-toolbar"><div className="segmented"><button className={!preview ? 'selected' : ''} onClick={() => setPreview(false)}>Редактор</button><button className={preview ? 'selected' : ''} onClick={() => setPreview(true)}>Предпросмотр</button></div><span>{kindLabels[document.kind]}</span></div>
       {!preview && <div className="office-document-meta"><label className="title-label">НАЗВАНИЕ ДОКУМЕНТА<input className="document-title" aria-label="Название документа" value={document.title} maxLength={300} onChange={e => edit({ title: e.target.value })} /></label><div className="document-meta"><label>Назначение<select value={document.purpose} onChange={e => edit({ purpose: e.target.value as DocumentInput['purpose'] })}>{Object.entries(purposeLabels).map(([key, value]) => <option key={key} value={key}>{value}</option>)}</select></label><label>Язык документа<select value={content.metadata.language} onChange={e => changeLanguage(e.target.value as 'ru' | 'en')}><option value="ru">Русский</option><option value="en">English</option></select></label></div></div>}
-      {content.kind === 'text' ? preview ? <Preview document={document} /> : <article className="editor-paper"><TextCanvas content={content} update={content => edit({ content })} /></article> : content.kind === 'presentation' ? <PresentationEditor key={document.id} content={content} update={content => edit({ content })} preview={preview} /> : <SpreadsheetEditor key={document.id} content={content} update={content => edit({ content })} preview={preview} />}
+      {content.kind !== 'presentation' && <div hidden={preview}><OfficeAI key={document.id} content={content} update={content => edit({ content })} /></div>}
+      {content.kind === 'text' && !preview && <TextDesign key={document.id} content={content} update={content => edit({ content })} />}
+      {content.kind === 'text' ? preview ? <Preview document={document} /> : <article className="editor-paper" style={content.design ? { fontFamily: content.design.font, fontSize: `${content.design.size}pt`, lineHeight: content.design.lineHeight, color: content.design.color, textAlign: content.design.align } : undefined}><TextCanvas content={content} update={content => edit({ content })} /></article> : content.kind === 'presentation' ? <PresentationEditor key={document.id} content={content} update={content => edit({ content })} preview={preview} /> : <SpreadsheetEditor key={document.id} content={content} update={content => edit({ content })} preview={preview} />}
       <p className="canvas-footnote">{content.kind === 'text' ? 'Точная разбивка на страницы формируется при экспорте. Ctrl + S — сохранить.' : 'Экспорт содержит редактируемые элементы. Ctrl + S — сохранить.'}</p>
     </div>{blocker.state === 'blocked' && <UnsavedDialog onStay={() => blocker.reset()} onLeave={() => blocker.proceed()} onSave={async () => { if (await save()) blocker.proceed() }} />}
   </main>

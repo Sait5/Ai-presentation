@@ -1,0 +1,10 @@
+{
+  "name": "forma-workspace",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "24.x" },
+  "scripts": {
+    "build": "npm --prefix server run build && npm --prefix ai-create/client run build",
+    "check": "npm --prefix server run typecheck && npm --prefix server run lint && npm --prefix server test && npm --prefix ai-create/client run build && npm --prefix ai-create/client run lint"
+  }
+}

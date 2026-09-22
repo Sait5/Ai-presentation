@@ -9,7 +9,7 @@ const environmentSchema = z.object({
   JWT_SECRET: z.string().min(48),
   AI_PROVIDER: z.enum(['gemini', 'openai']).default('gemini'),
   GEMINI_API_KEY: z.string().optional(),
-  GEMINI_MODEL: z.string().regex(/^[a-zA-Z0-9._-]+$/).default('gemini-3.8-flash'),
+  GEMINI_MODEL: z.string().regex(/^[a-zA-Z0-9._-]+$/).default('gemini-3.5-flash-lite'),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_MODEL: z.string().default('gpt-6-astra'),
   OPENAI_IMAGE_MODEL: z.string().default('gpt-image-2.5-sunburst'),

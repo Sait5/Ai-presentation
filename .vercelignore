@@ -1,0 +1,9 @@
+.git
+.local
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/dist
+server/src/generated
+docs/screenshots

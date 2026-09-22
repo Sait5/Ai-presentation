@@ -31,8 +31,7 @@ export function imageService(db: PrismaClient) {
       return Buffer.from(asset.bytes)
     },
     async validate(ownerId: string, data: DocumentInput) {
-      if (data.content.kind !== 'presentation') return
-      const ids = [...new Set(data.content.slides.flatMap(s => s.image ? [s.image.assetId] : []))]
+      const ids = [...new Set(data.content.kind === 'presentation' ? data.content.slides.flatMap(s => s.image ? [s.image.assetId] : []) : data.content.kind === 'text' ? data.content.blocks.flatMap(b => b.type === 'image' ? [b.assetId] : []) : [])]
       if (ids.length && await db.imageAsset.count({ where: { ownerId, id: { in: ids } } }) !== ids.length) throw new HttpError(422, 'IMAGE_NOT_FOUND', 'Одно из изображений недоступно вашему аккаунту')
     },
   }

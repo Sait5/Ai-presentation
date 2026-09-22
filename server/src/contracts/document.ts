@@ -3,16 +3,20 @@ import { presentationContentSchema, spreadsheetContentSchema, blankWorksheet } f
 
 const id = z.string().uuid()
 const text = z.string().max(12000)
+export const textDesignSchema = z.object({ font: z.enum(['Arial', 'Georgia', 'Verdana']), size: z.number().int().min(9).max(28), align: z.enum(['left', 'center', 'right', 'justify']), lineHeight: z.number().min(1).max(2), color: z.string().regex(/^#[0-9a-fA-F]{6}$/) }).strict()
+export const defaultTextDesign: z.infer<typeof textDesignSchema> = { font: 'Arial', size: 12, align: 'left', lineHeight: 1.5, color: '#22332e' }
 export const blockSchema = z.discriminatedUnion('type', [
   z.object({ id, type: z.literal('heading'), level: z.union([z.literal(1), z.literal(2), z.literal(3)]), text: z.string().max(300) }).strict(),
   z.object({ id, type: z.literal('paragraph'), text }).strict(),
   z.object({ id, type: z.literal('list'), ordered: z.boolean(), items: z.array(z.string().max(2000)).min(1).max(50) }).strict(),
   z.object({ id, type: z.literal('table'), columns: z.array(z.string().max(120)).min(1).max(6), rows: z.array(z.array(z.string().max(1200)).min(1).max(6)).max(100) }).strict(),
   z.object({ id, type: z.literal('pageBreak') }).strict(),
+  z.object({ id, type: z.literal('image'), assetId: id, alt: z.string().max(500), width: z.number().min(10).max(100), align: z.enum(['left', 'center', 'right']) }).strict(),
 ])
 export const textContentSchema = z.object({
   schemaVersion: z.literal(1), kind: z.literal('text'),
   metadata: z.object({ language: z.enum(['ru', 'en']), theme: z.literal('business') }).strict(),
+  design: textDesignSchema.optional(),
   blocks: z.array(blockSchema).max(120),
 }).strict().superRefine((value, ctx) => {
   if (new Set(value.blocks.map((block) => block.id)).size !== value.blocks.length) {
