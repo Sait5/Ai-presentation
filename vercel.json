@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "npm ci --prefix server && npm ci --prefix ai-create/client",
+  "installCommand": "npm ci --include=dev --prefix server && npm ci --include=dev --prefix ai-create/client",
   "buildCommand": "npm --prefix server run db:deploy && npm run build",
   "outputDirectory": "ai-create/client/dist",
   "functions": {
