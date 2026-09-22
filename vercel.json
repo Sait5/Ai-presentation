@@ -7,7 +7,7 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 300,
-      "includeFiles": "server/node_modules/{@sparticuz/chromium/bin,@fontsource/noto-sans/files}/**",
+      "includeFiles": "server/node_modules/{@sparticuz/chromium/bin,@fontsource/noto-sans/files,pptxgenjs,image-size}/**",
       "excludeFiles": "{.local/**,server/.env,server/tests/**,docs/**,**/*.map}"
     }
   },

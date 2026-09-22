@@ -3,7 +3,8 @@ import sharp from 'sharp'
 import type { SavedDocument } from '../contracts/document.js'
 import { blockRect, contentRect, defaultDesign, fittedTextSize, imageRect, themes, type Rect } from '../contracts/design.js'
 import { HttpError } from '../middleware/errors.js'
-const pptxgen = createRequire(import.meta.url)('pptxgenjs') as typeof import('pptxgenjs').default
+const require = createRequire(import.meta.url)
+const pptxgen = require('pptxgenjs') as typeof import('pptxgenjs').default
 const inches = (r: Rect) => ({ x: r.x * 13.333333 / 100, y: r.y * 7.5 / 100, w: r.w * 13.333333 / 100, h: r.h * 7.5 / 100 })
 
 export async function generatePptx(document: SavedDocument, getImage?: (id: string) => Promise<Buffer>): Promise<Buffer> {
