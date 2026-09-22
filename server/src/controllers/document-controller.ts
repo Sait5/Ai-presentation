@@ -12,7 +12,12 @@ export function documentController(service: ReturnType<typeof documentService>, 
     next(result.success ? undefined : new HttpError(400, 'INVALID_ID', 'Некорректный идентификатор'))
   })
   router.get('/', async (req, res) => {
-    const { page } = z.object({ page: z.coerce.number().int().min(1).max(100000).default(1) }).strict().parse(req.query)
+    // Vercel forwards the named rewrite capture as a query parameter.
+    // It is routing metadata, never a document filter or filesystem path.
+    const { page } = z.object({
+      page: z.coerce.number().int().min(1).max(100000).default(1),
+      path: z.union([z.string(), z.array(z.string())]).optional(),
+    }).strict().parse(req.query)
     res.json(await service.list(res.locals.userId as string, page))
   })
   router.post('/', async (req, res) => { res.status(201).json(await service.create(res.locals.userId as string, documentInputSchema.parse(req.body))) })
